@@ -5,6 +5,7 @@ import '../../providers/user_provider.dart';
 import '../../providers/chat_provider.dart';
 import 'friends_list_screen.dart';
 import '../chat/chat_list_screen.dart';
+import '../profile/profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -46,7 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<Widget> _screens = [
     const FriendsListScreen(), // 친구 목록
     const ChatListScreen(), // 채팅 목록
-    const _ProfilePlaceholder(), // 프로필 (Phase 8에서 구현)
+    const ProfileScreen(), // 프로필
   ];
 
   @override
@@ -122,57 +123,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         );
       },
-    );
-  }
-}
-
-// 프로필 화면 Placeholder (Phase 8에서 구현 예정)
-class _ProfilePlaceholder extends StatelessWidget {
-  const _ProfilePlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFFEE500),
-        elevation: 0,
-        title: const Text(
-          '프로필',
-          style: TextStyle(
-            color: Colors.black87,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.person_outline,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '프로필 화면',
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '다음 Phase에서 구현 예정',
-              style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
