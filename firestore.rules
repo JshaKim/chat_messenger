@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 테스트용 - 모든 접근 허용
+    // 프로덕션에서는 보안 규칙을 엄격하게 설정해야 합니다
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

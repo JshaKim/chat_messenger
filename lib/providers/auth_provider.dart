@@ -79,10 +79,25 @@ class AuthProvider with ChangeNotifier {
       _setLoading(true);
       _clearError();
 
-      await _authService.signIn(
+      final userCredential = await _authService.signIn(
         email: email,
         password: password,
       );
+
+      // 로그인 후 Firestore에 사용자 문서가 있는지 확인
+      if (userCredential.user != null) {
+        final existingUser = await _userService.getUserById(userCredential.user!.uid);
+
+        // 사용자 문서가 없으면 생성
+        if (existingUser == null) {
+          await _userService.createUser(
+            uid: userCredential.user!.uid,
+            email: userCredential.user!.email ?? email,
+            displayName: userCredential.user!.displayName ?? email.split('@')[0],
+            photoURL: userCredential.user!.photoURL,
+          );
+        }
+      }
 
       _setLoading(false);
       return true;

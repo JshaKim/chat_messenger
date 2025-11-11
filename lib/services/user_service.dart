@@ -32,7 +32,7 @@ class UserService {
     }
   }
 
-  // 사용자 정보 조회
+  // 사용자 정보 조회 (없으면 자동 생성)
   Future<UserModel?> getUserById(String uid) async {
     try {
       final doc = await _firestore
@@ -43,6 +43,8 @@ class UserService {
       if (doc.exists && doc.data() != null) {
         return UserModel.fromJson(doc.data()!);
       }
+
+      // 사용자 문서가 없으면 null 반환 (AuthProvider에서 생성함)
       return null;
     } catch (e) {
       throw Exception('사용자 정보 조회 실패: $e');
@@ -102,18 +104,37 @@ class UserService {
     });
   }
 
-  // 온라인 상태 업데이트
+  // 온라인 상태 업데이트 (문서가 없으면 기본 정보로 생성)
   Future<void> updateOnlineStatus(String uid, bool isOnline) async {
     try {
-      await _firestore
+      // 먼저 문서가 존재하는지 확인
+      final doc = await _firestore
           .collection(_usersCollection)
           .doc(uid)
-          .update({
-        'isOnline': isOnline,
-        'lastSeen': Timestamp.fromDate(DateTime.now()),
-      });
+          .get();
+
+      if (doc.exists) {
+        // 문서가 있으면 업데이트
+        await _firestore
+            .collection(_usersCollection)
+            .doc(uid)
+            .update({
+          'isOnline': isOnline,
+          'lastSeen': Timestamp.fromDate(DateTime.now()),
+        });
+      } else {
+        // 문서가 없으면 set with merge로 생성
+        await _firestore
+            .collection(_usersCollection)
+            .doc(uid)
+            .set({
+          'isOnline': isOnline,
+          'lastSeen': Timestamp.fromDate(DateTime.now()),
+        }, SetOptions(merge: true));
+      }
     } catch (e) {
-      throw Exception('온라인 상태 업데이트 실패: $e');
+      // 에러 발생 시 조용히 무시 (온라인 상태는 중요하지 않음)
+      print('온라인 상태 업데이트 실패: $e');
     }
   }
 
