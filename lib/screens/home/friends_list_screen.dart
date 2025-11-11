@@ -46,6 +46,41 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
     });
   }
 
+  Future<void> _handleLogout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('로그아웃'),
+        content: const Text('정말 로그아웃하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              '로그아웃',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final authProvider = context.read<AuthProvider>();
+      final userProvider = context.read<UserProvider>();
+      final chatProvider = context.read<ChatProvider>();
+
+      await authProvider.signOut();
+
+      // Provider 초기화
+      userProvider.clear();
+      chatProvider.clear();
+    }
+  }
+
   Future<void> _navigateToChat(BuildContext context, UserModel otherUser) async {
     final authProvider = context.read<AuthProvider>();
     final chatProvider = context.read<ChatProvider>();
@@ -123,6 +158,11 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
                   icon: const Icon(Icons.search, color: Colors.black87),
                   onPressed: _startSearch,
                 ),
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.black87),
+            onPressed: _handleLogout,
+            tooltip: '로그아웃',
+          ),
         ],
       ),
       body: Consumer<UserProvider>(

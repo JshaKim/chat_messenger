@@ -173,12 +173,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (confirmed == true && mounted) {
       final authProvider = context.read<AuthProvider>();
       final userProvider = context.read<UserProvider>();
-      final chatProvider = context.read<UserProvider>();
+      final chatProvider = context.read<ChatProvider>();
 
       await authProvider.signOut();
 
       // Provider 초기화
       userProvider.clear();
+      chatProvider.clear();
 
       if (!mounted) return;
 
