@@ -42,24 +42,12 @@ class AuthProvider with ChangeNotifier {
       _setLoading(true);
       _clearError();
 
-      // Firebase Auth 회원가입
-      final userCredential = await _authService.signUp(
+      // Firebase Auth 회원가입 (Firestore 사용자 문서 자동 생성됨)
+      await _authService.signUp(
         email: email,
         password: password,
+        displayName: displayName,
       );
-
-      // Firestore에 사용자 정보 저장
-      if (userCredential.user != null) {
-        await _userService.createUser(
-          uid: userCredential.user!.uid,
-          email: email,
-          displayName: displayName,
-          photoURL: null,
-        );
-
-        // Firebase Auth 프로필 업데이트
-        await userCredential.user!.updateDisplayName(displayName);
-      }
 
       _setLoading(false);
       return true;

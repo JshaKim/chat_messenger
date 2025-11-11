@@ -1,7 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // 현재 사용자
   User? get currentUser => _auth.currentUser;
@@ -13,12 +15,35 @@ class AuthService {
   Future<UserCredential> signUp({
     required String email,
     required String password,
+    required String displayName,
   }) async {
     try {
-      return await _auth.createUserWithEmailAndPassword(
+      // Firebase Auth 회원가입
+      final userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
+
+      // Firestore에 사용자 문서 생성
+      if (userCredential.user != null) {
+        final uid = userCredential.user!.uid;
+        final now = Timestamp.now();
+
+        await _firestore.collection('users').doc(uid).set({
+          'uid': uid,
+          'email': email,
+          'displayName': displayName,
+          'photoURL': null,
+          'isOnline': true,
+          'lastSeen': now,
+          'createdAt': now,
+        });
+
+        // Firebase Auth 프로필 업데이트
+        await userCredential.user!.updateDisplayName(displayName);
+      }
+
+      return userCredential;
     } catch (e) {
       throw _handleAuthException(e);
     }
