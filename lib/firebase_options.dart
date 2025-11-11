@@ -53,11 +53,11 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'YOUR_ANDROID_API_KEY',
-    appId: 'YOUR_ANDROID_APP_ID',
-    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-    projectId: 'YOUR_PROJECT_ID',
-    storageBucket: 'YOUR_STORAGE_BUCKET',
+    apiKey: 'AIzaSyB5M4KH842HtzSOoUGYsYLrRls5z0mUarw',
+    appId: '1:1015884369314:android:91fbb15a3d923d810736fb',
+    messagingSenderId: '1015884369314',
+    projectId: 'chat-messenger-6b3d7',
+    storageBucket: 'chat-messenger-6b3d7.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
