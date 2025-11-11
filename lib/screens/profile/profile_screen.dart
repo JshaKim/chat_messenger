@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
+import '../../providers/chat_provider.dart';
 import '../../widgets/user_avatar.dart';
 import '../../utils/constants.dart';
 
