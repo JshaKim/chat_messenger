@@ -36,16 +36,20 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
   }
 
   void _startSearch() {
-    setState(() {
-      _isSearching = true;
-    });
+    if (mounted) {
+      setState(() {
+        _isSearching = true;
+      });
+    }
   }
 
   void _stopSearch() {
-    setState(() {
-      _isSearching = false;
-      _searchController.clear();
-    });
+    if (mounted) {
+      setState(() {
+        _isSearching = false;
+        _searchController.clear();
+      });
+    }
   }
 
   Future<void> _handleLogout() async {
@@ -119,8 +123,11 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
       ),
     );
 
+    // 즉시 값 복사하고 controller dispose
+    final email = emailController.text.trim();
+    emailController.dispose();
+
     if (result == true && mounted) {
-      final email = emailController.text.trim();
 
       if (email.isEmpty) {
         _showSnackBar('이메일을 입력해주세요', isError: true);
@@ -157,8 +164,6 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
         _showSnackBar('친구 추가 중 오류가 발생했습니다', isError: true);
       }
     }
-
-    emailController.dispose();
   }
 
   void _showSnackBar(String message, {bool isError = false}) {
@@ -231,7 +236,9 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
                 ),
                 style: const TextStyle(color: Colors.black87),
                 onChanged: (value) {
-                  setState(() {});
+                  if (mounted) {
+                    setState(() {});
+                  }
                 },
               )
             : const Text(

@@ -169,9 +169,11 @@ class _SignupScreenState extends State<SignupScreen> {
                               : Icons.visibility,
                         ),
                         onPressed: () {
-                          setState(() {
-                            _obscurePassword = !_obscurePassword;
-                          });
+                          if (mounted) {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          }
                         },
                       ),
                       filled: true,
@@ -210,9 +212,11 @@ class _SignupScreenState extends State<SignupScreen> {
                               : Icons.visibility,
                         ),
                         onPressed: () {
-                          setState(() {
-                            _obscureConfirmPassword = !_obscureConfirmPassword;
-                          });
+                          if (mounted) {
+                            setState(() {
+                              _obscureConfirmPassword = !_obscureConfirmPassword;
+                            });
+                          }
                         },
                       ),
                       filled: true,
