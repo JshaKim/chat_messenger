@@ -5,6 +5,7 @@ import 'dart:io';
 import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/chat_provider.dart';
+import '../../services/user_service.dart';
 import '../../widgets/user_avatar.dart';
 import '../../utils/constants.dart';
 
@@ -17,6 +18,145 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final _imagePicker = ImagePicker();
+  final _userService = UserService();
+
+  // TextEditingControllers for editable fields
+  late final TextEditingController _nicknameController;
+  late final TextEditingController _statusController;
+
+  bool _isLoading = false;
+  bool _hasChanges = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize controllers
+    _nicknameController = TextEditingController();
+    _statusController = TextEditingController();
+
+    // Load initial values after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadCurrentUserData();
+    });
+
+    // Listen for changes
+    _nicknameController.addListener(_onFieldChanged);
+    _statusController.addListener(_onFieldChanged);
+  }
+
+  @override
+  void dispose() {
+    // Remove listeners before disposing
+    _nicknameController.removeListener(_onFieldChanged);
+    _statusController.removeListener(_onFieldChanged);
+
+    // Dispose controllers
+    _nicknameController.dispose();
+    _statusController.dispose();
+    super.dispose();
+  }
+
+  void _loadCurrentUserData() {
+    if (!mounted) return;
+
+    final userProvider = context.read<UserProvider>();
+    final currentUser = userProvider.currentUser;
+
+    if (currentUser != null) {
+      _nicknameController.text = currentUser.displayName;
+      _statusController.text = currentUser.statusMessage ?? '';
+      setState(() {
+        _hasChanges = false;
+      });
+    }
+  }
+
+  void _onFieldChanged() {
+    if (!mounted) return;
+
+    final userProvider = context.read<UserProvider>();
+    final currentUser = userProvider.currentUser;
+
+    if (currentUser != null) {
+      final hasNicknameChanged = _nicknameController.text != currentUser.displayName;
+      final hasStatusChanged = _statusController.text != (currentUser.statusMessage ?? '');
+
+      setState(() {
+        _hasChanges = hasNicknameChanged || hasStatusChanged;
+      });
+    }
+  }
+
+  Future<void> _handleSaveProfile() async {
+    if (!_hasChanges) return;
+
+    final nickname = _nicknameController.text.trim();
+    final status = _statusController.text.trim();
+
+    // Validation
+    if (nickname.isEmpty) {
+      _showSnackBar('닉네임을 입력해주세요', isError: true);
+      return;
+    }
+
+    if (nickname.length < 2) {
+      _showSnackBar('닉네임은 2자 이상이어야 합니다', isError: true);
+      return;
+    }
+
+    if (nickname.length > 20) {
+      _showSnackBar('닉네임은 20자 이하여야 합니다', isError: true);
+      return;
+    }
+
+    if (status.length > 50) {
+      _showSnackBar('상태 메시지는 50자 이하여야 합니다', isError: true);
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final authProvider = context.read<AuthProvider>();
+      final currentUser = authProvider.currentUser;
+
+      if (currentUser == null) {
+        _showSnackBar('사용자 정보를 찾을 수 없습니다', isError: true);
+        return;
+      }
+
+      // Update nickname if changed
+      await _userService.updateDisplayName(currentUser.uid, nickname);
+
+      // Update status message if changed
+      await _userService.updateStatusMessage(
+        currentUser.uid,
+        status.isEmpty ? null : status,
+      );
+
+      if (!mounted) return;
+
+      // Reload user data
+      await context.read<UserProvider>().subscribeToCurrentUser(currentUser.uid);
+
+      setState(() {
+        _hasChanges = false;
+      });
+
+      _showSnackBar('프로필이 저장되었습니다');
+    } catch (e) {
+      if (!mounted) return;
+      _showSnackBar('프로필 저장 실패: $e', isError: true);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   Future<void> _handleChangeProfilePhoto() async {
     try {
@@ -42,146 +182,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
           if (!mounted) return;
 
           if (success) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('프로필 사진이 변경되었습니다'),
-                backgroundColor: Colors.green,
-              ),
-            );
+            _showSnackBar('프로필 사진이 변경되었습니다');
           } else if (userProvider.errorMessage != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(userProvider.errorMessage!),
-                backgroundColor: Colors.red,
-              ),
-            );
+            _showSnackBar(userProvider.errorMessage!, isError: true);
             userProvider.clearError();
           }
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('이미지를 선택할 수 없습니다: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _handleChangeDisplayName() async {
-    final authProvider = context.read<AuthProvider>();
-    final userProvider = context.read<UserProvider>();
-    final currentUser = authProvider.currentUser;
-    final currentDisplayName = userProvider.currentUser?.displayName ?? '';
-
-    if (currentUser == null) return;
-
-    String? newDisplayName;
-    String? errorMessage;
-
-    await showDialog(
-      context: context,
-      builder: (dialogContext) {
-        final TextEditingController controller = TextEditingController(
-          text: currentDisplayName,
-        );
-
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('닉네임 변경'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: controller,
-                    decoration: const InputDecoration(
-                      labelText: '새 닉네임',
-                      hintText: '2-20자',
-                    ),
-                    maxLength: 20,
-                    autofocus: true,
-                  ),
-                  if (errorMessage != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        errorMessage!,
-                        style: const TextStyle(
-                          color: Colors.red,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    controller.dispose();
-                    Navigator.pop(dialogContext);
-                  },
-                  child: const Text('취소'),
-                ),
-                TextButton(
-                  onPressed: () {
-                    final text = controller.text.trim();
-                    if (text.isEmpty) {
-                      setState(() {
-                        errorMessage = '닉네임을 입력해주세요';
-                      });
-                    } else if (text.length < 2) {
-                      setState(() {
-                        errorMessage = '닉네임은 2자 이상이어야 합니다';
-                      });
-                    } else if (text.length > 20) {
-                      setState(() {
-                        errorMessage = '닉네임은 20자 이하여야 합니다';
-                      });
-                    } else {
-                      newDisplayName = text;
-                      controller.dispose();
-                      Navigator.pop(dialogContext);
-                    }
-                  },
-                  child: const Text('변경'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-
-    // 다이얼로그가 닫힌 후 mounted 체크
-    if (!mounted) return;
-
-    if (newDisplayName != null && newDisplayName != currentDisplayName) {
-      final success = await userProvider.updateDisplayName(
-        uid: currentUser.uid,
-        displayName: newDisplayName!,
-      );
-
-      if (!mounted) return;
-
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('닉네임이 변경되었습니다'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else if (userProvider.errorMessage != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(userProvider.errorMessage!),
-            backgroundColor: Colors.red,
-          ),
-        );
-        userProvider.clearError();
+        _showSnackBar('이미지를 선택할 수 없습니다: $e', isError: true);
       }
     }
   }
@@ -221,13 +231,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('로그아웃되었습니다'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      _showSnackBar('로그아웃되었습니다');
     }
+  }
+
+  void _showSnackBar(String message, {bool isError = false}) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red : Colors.green,
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   @override
@@ -244,6 +262,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
+        actions: [
+          if (_hasChanges && !_isLoading)
+            TextButton(
+              onPressed: _handleSaveProfile,
+              child: const Text(
+                '저장',
+                style: TextStyle(
+                  color: Colors.black87,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+        ],
       ),
       body: Consumer2<AuthProvider, UserProvider>(
         builder: (context, authProvider, userProvider, child) {
@@ -299,68 +331,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
 
-                const SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: AppSpacing.xl),
 
-                // 닉네임
-                Text(
-                  currentUser.displayName,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
+                // 이메일 (읽기 전용)
+                _buildReadOnlyField(
+                  label: '이메일',
+                  value: currentUser.email,
+                  icon: Icons.email,
                 ),
 
-                const SizedBox(height: AppSpacing.sm),
+                const SizedBox(height: AppSpacing.md),
 
-                // 이메일
-                Text(
-                  currentUser.email,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
+                // 닉네임 (편집 가능)
+                _buildEditableField(
+                  label: '닉네임',
+                  controller: _nicknameController,
+                  icon: Icons.person,
+                  maxLength: 20,
+                  enabled: !_isLoading,
+                ),
+
+                const SizedBox(height: AppSpacing.md),
+
+                // 상태 메시지 (편집 가능)
+                _buildEditableField(
+                  label: '상태 메시지',
+                  controller: _statusController,
+                  icon: Icons.chat_bubble_outline,
+                  maxLength: 50,
+                  hint: '상태 메시지를 입력하세요',
+                  enabled: !_isLoading,
                 ),
 
                 const SizedBox(height: AppSpacing.xl),
-
-                // 정보 카드
-                Card(
-                  elevation: 0,
-                  color: Colors.grey[100],
-                  child: Column(
-                    children: [
-                      ListTile(
-                        leading: const Icon(Icons.person),
-                        title: const Text('닉네임 변경'),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: _handleChangeDisplayName,
-                      ),
-                      const Divider(height: 1),
-                      ListTile(
-                        leading: const Icon(Icons.email),
-                        title: const Text('이메일'),
-                        subtitle: Text(currentUser.email),
-                      ),
-                      const Divider(height: 1),
-                      ListTile(
-                        leading: Icon(
-                          Icons.circle,
-                          color: currentUser.isOnline
-                              ? Colors.green
-                              : Colors.grey,
-                          size: 16,
-                        ),
-                        title: const Text('상태'),
-                        subtitle: Text(
-                          currentUser.isOnline ? '온라인' : '오프라인',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: AppSpacing.lg),
 
                 // 앱 정보
                 Card(
@@ -389,7 +392,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _handleLogout,
+                    onPressed: _isLoading ? null : _handleLogout,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
                       foregroundColor: Colors.white,
@@ -398,10 +401,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         borderRadius: AppBorderRadius.circularSm,
                       ),
                     ),
-                    child: const Text(
-                      '로그아웃',
-                      style: AppTextStyles.button,
-                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text(
+                            '로그아웃',
+                            style: AppTextStyles.button,
+                          ),
                   ),
                 ),
 
@@ -411,6 +423,104 @@ class _ProfileScreenState extends State<ProfileScreen> {
           );
         },
       ),
+    );
+  }
+
+  Widget _buildReadOnlyField({
+    required String label,
+    required String value,
+    required IconData icon,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Colors.grey,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: Colors.grey, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEditableField({
+    required String label,
+    required TextEditingController controller,
+    required IconData icon,
+    int? maxLength,
+    String? hint,
+    bool enabled = true,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Colors.grey,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          enabled: enabled,
+          maxLength: maxLength,
+          enableIMEPersonalizedLearning: true,
+          keyboardType: TextInputType.text,
+          textInputAction: TextInputAction.done,
+          decoration: InputDecoration(
+            prefixIcon: Icon(icon, color: AppColors.kakaoYellow),
+            hintText: hint,
+            counterText: maxLength != null ? null : '',
+            filled: true,
+            fillColor: enabled ? Colors.white : Colors.grey[100],
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey[300]!),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey[300]!),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppColors.kakaoYellow, width: 2),
+            ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey[300]!),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

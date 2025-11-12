@@ -204,6 +204,18 @@ class UserService {
     }
   }
 
+  // 상태 메시지 업데이트
+  Future<void> updateStatusMessage(String uid, String? statusMessage) async {
+    try {
+      await _firestore
+          .collection(_usersCollection)
+          .doc(uid)
+          .update({'statusMessage': statusMessage});
+    } catch (e) {
+      throw Exception('상태 메시지 업데이트 실패: $e');
+    }
+  }
+
   // 이메일로 사용자 검색
   Future<UserModel?> getUserByEmail(String email) async {
     try {
