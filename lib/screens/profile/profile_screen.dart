@@ -99,6 +99,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (!mounted) return;
 
+      // Controller 값 명시적 업데이트
+      final updatedUser = context.read<UserProvider>().currentUser;
+      if (updatedUser != null) {
+        setState(() {
+          _nicknameController.text = updatedUser.displayName;
+          _statusController.text = updatedUser.statusMessage ?? '';
+        });
+      }
+
       _showSnackBar('프로필이 저장되었습니다');
     } catch (e) {
       if (!mounted) return;
