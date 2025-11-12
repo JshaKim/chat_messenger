@@ -20,76 +20,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _imagePicker = ImagePicker();
   final _userService = UserService();
 
-  // TextEditingControllers for editable fields
+  // TextEditingControllers - 단순하게만 사용
   late final TextEditingController _nicknameController;
   late final TextEditingController _statusController;
 
   bool _isLoading = false;
-  bool _hasChanges = false;
 
   @override
   void initState() {
     super.initState();
-    // Initialize controllers
+    // Controller 생성만
     _nicknameController = TextEditingController();
     _statusController = TextEditingController();
-
-    // Load initial values after first frame
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadCurrentUserData();
-    });
-
-    // Listen for changes
-    _nicknameController.addListener(_onFieldChanged);
-    _statusController.addListener(_onFieldChanged);
   }
 
   @override
   void dispose() {
-    // Remove listeners before disposing
-    _nicknameController.removeListener(_onFieldChanged);
-    _statusController.removeListener(_onFieldChanged);
-
-    // Dispose controllers
+    // Controller 해제만
     _nicknameController.dispose();
     _statusController.dispose();
     super.dispose();
   }
 
-  void _loadCurrentUserData() {
-    if (!mounted) return;
-
-    final userProvider = context.read<UserProvider>();
-    final currentUser = userProvider.currentUser;
-
-    if (currentUser != null) {
-      _nicknameController.text = currentUser.displayName;
-      _statusController.text = currentUser.statusMessage ?? '';
-      setState(() {
-        _hasChanges = false;
-      });
-    }
-  }
-
-  void _onFieldChanged() {
-    if (!mounted) return;
-
-    final userProvider = context.read<UserProvider>();
-    final currentUser = userProvider.currentUser;
-
-    if (currentUser != null) {
-      final hasNicknameChanged = _nicknameController.text != currentUser.displayName;
-      final hasStatusChanged = _statusController.text != (currentUser.statusMessage ?? '');
-
-      setState(() {
-        _hasChanges = hasNicknameChanged || hasStatusChanged;
-      });
-    }
-  }
-
   Future<void> _handleSaveProfile() async {
-    if (!_hasChanges) return;
-
     final nickname = _nicknameController.text.trim();
     final status = _statusController.text.trim();
 
@@ -114,6 +67,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return;
     }
 
+    if (!mounted) return;
+
     setState(() {
       _isLoading = true;
     });
@@ -127,10 +82,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return;
       }
 
-      // Update nickname if changed
+      // Update nickname
       await _userService.updateDisplayName(currentUser.uid, nickname);
 
-      // Update status message if changed
+      // Update status message
       await _userService.updateStatusMessage(
         currentUser.uid,
         status.isEmpty ? null : status,
@@ -139,11 +94,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (!mounted) return;
 
       // Reload user data
-      await context.read<UserProvider>().subscribeToCurrentUser(currentUser.uid);
+      await context.read<UserProvider>().loadCurrentUser(currentUser.uid);
 
-      setState(() {
-        _hasChanges = false;
-      });
+      if (!mounted) return;
 
       _showSnackBar('프로필이 저장되었습니다');
     } catch (e) {
@@ -263,7 +216,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
         actions: [
-          if (_hasChanges && !_isLoading)
+          if (!_isLoading)
             TextButton(
               onPressed: _handleSaveProfile,
               child: const Text(
@@ -288,6 +241,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 color: AppColors.kakaoYellow,
               ),
             );
+          }
+
+          // Controller 값 설정 (build 내에서)
+          if (_nicknameController.text != currentUser.displayName) {
+            _nicknameController.text = currentUser.displayName;
+          }
+          if (_statusController.text != (currentUser.statusMessage ?? '')) {
+            _statusController.text = currentUser.statusMessage ?? '';
           }
 
           return SingleChildScrollView(
@@ -336,7 +297,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 // 이메일 (읽기 전용)
                 _buildReadOnlyField(
                   label: '이메일',
-                  value: currentUser.email,
+                  value: currentUser.email != 'no-email@example.com'
+                      ? currentUser.email
+                      : (authUser.email ?? currentUser.email),
                   icon: Icons.email,
                 ),
 
