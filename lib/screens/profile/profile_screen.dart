@@ -19,26 +19,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late TextEditingController _nicknameController;
   late TextEditingController _statusController;
   bool _isLoading = false;
-  String? _previousUserId;
 
   @override
   void initState() {
     super.initState();
     _nicknameController = TextEditingController();
     _statusController = TextEditingController();
-  }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
+    // 첫 프레임 이후에 controller 초기화
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
 
-    // UserProvider의 currentUser가 변경되었을 때만 controller 업데이트
-    final currentUser = context.watch<UserProvider>().currentUser;
-    if (currentUser != null && _previousUserId != currentUser.uid) {
-      _nicknameController.text = currentUser.displayName;
-      _statusController.text = currentUser.statusMessage ?? '';
-      _previousUserId = currentUser.uid;
-    }
+      final currentUser = context.read<UserProvider>().currentUser;
+      if (currentUser != null) {
+        _nicknameController.text = currentUser.displayName;
+        _statusController.text = currentUser.statusMessage ?? '';
+      }
+    });
   }
 
   @override
@@ -82,10 +79,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'displayName': nickname,
         'statusMessage': status.isEmpty ? null : status,
       });
-
-      if (!mounted) return;
-
-      await context.read<UserProvider>().loadCurrentUser(uid);
 
       if (!mounted) return;
 
