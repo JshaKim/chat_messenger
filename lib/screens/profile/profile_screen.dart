@@ -63,35 +63,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final currentUser = userProvider.currentUser;
 
     if (currentUser != null) {
-      _nicknameController.text = currentUser.displayName;
-      _statusController.text = currentUser.statusMessage ?? '';
-      setState(() {
-        _hasChanges = false;
-      });
+      // controller가 dispose되었을 수 있으므로 try-catch로 보호
+      try {
+        _nicknameController.text = currentUser.displayName;
+        _statusController.text = currentUser.statusMessage ?? '';
+        setState(() {
+          _hasChanges = false;
+        });
+      } catch (e) {
+        // Controller가 이미 dispose되었다면 무시
+        print('[ProfileScreen] Controller already disposed: $e');
+      }
     }
   }
 
   void _onFieldChanged() {
     if (!mounted) return;
 
-    final userProvider = context.read<UserProvider>();
-    final currentUser = userProvider.currentUser;
+    // controller가 dispose되었을 수 있으므로 try-catch로 보호
+    try {
+      final userProvider = context.read<UserProvider>();
+      final currentUser = userProvider.currentUser;
 
-    if (currentUser != null) {
-      final hasNicknameChanged = _nicknameController.text != currentUser.displayName;
-      final hasStatusChanged = _statusController.text != (currentUser.statusMessage ?? '');
+      if (currentUser != null) {
+        final hasNicknameChanged = _nicknameController.text != currentUser.displayName;
+        final hasStatusChanged = _statusController.text != (currentUser.statusMessage ?? '');
 
-      setState(() {
-        _hasChanges = hasNicknameChanged || hasStatusChanged;
-      });
+        setState(() {
+          _hasChanges = hasNicknameChanged || hasStatusChanged;
+        });
+      }
+    } catch (e) {
+      // Controller가 이미 dispose되었다면 무시
+      print('[ProfileScreen] Controller already disposed in listener: $e');
     }
   }
 
   Future<void> _handleSaveProfile() async {
     if (!_hasChanges) return;
 
-    final nickname = _nicknameController.text.trim();
-    final status = _statusController.text.trim();
+    // controller가 dispose되었을 수 있으므로 안전하게 접근
+    String nickname;
+    String status;
+    try {
+      nickname = _nicknameController.text.trim();
+      status = _statusController.text.trim();
+    } catch (e) {
+      print('[ProfileScreen] Controller disposed during save: $e');
+      return;
+    }
 
     // Validation
     if (nickname.isEmpty) {
