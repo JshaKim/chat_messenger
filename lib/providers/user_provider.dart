@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
@@ -12,6 +13,9 @@ class UserProvider with ChangeNotifier {
   List<UserModel> _users = [];
   bool _isLoading = false;
   String? _errorMessage;
+
+  StreamSubscription<UserModel?>? _currentUserSubscription;
+  StreamSubscription<List<UserModel>>? _allUsersSubscription;
 
   UserModel? get currentUser => _currentUser;
   List<UserModel> get users => _users;
@@ -36,7 +40,8 @@ class UserProvider with ChangeNotifier {
 
   // 현재 사용자 스트림 구독
   void subscribeToCurrentUser(String uid) {
-    _userService.getUserStream(uid).listen(
+    _currentUserSubscription?.cancel();
+    _currentUserSubscription = _userService.getUserStream(uid).listen(
       (user) {
         _currentUser = user;
         notifyListeners();
@@ -49,7 +54,8 @@ class UserProvider with ChangeNotifier {
 
   // 모든 사용자 목록 스트림 구독
   void subscribeToAllUsers() {
-    _userService.getAllUsers().listen(
+    _allUsersSubscription?.cancel();
+    _allUsersSubscription = _userService.getAllUsers().listen(
       (users) {
         _users = users;
         notifyListeners();
@@ -186,10 +192,20 @@ class UserProvider with ChangeNotifier {
 
   // Provider 초기화 (로그아웃 시 호출)
   void clear() {
+    _currentUserSubscription?.cancel();
+    _allUsersSubscription?.cancel();
+
     _currentUser = null;
     _users = [];
     _errorMessage = null;
     _isLoading = false;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _currentUserSubscription?.cancel();
+    _allUsersSubscription?.cancel();
+    super.dispose();
   }
 }

@@ -173,6 +173,17 @@ class _ChatListScreenState extends State<ChatListScreen> {
     return FutureBuilder<UserModel?>(
       future: context.read<UserProvider>().fetchUserById(otherUserId),
       builder: (context, snapshot) {
+        // 로딩 중
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox.shrink();
+        }
+
+        // 에러 발생
+        if (snapshot.hasError) {
+          return const SizedBox.shrink();
+        }
+
+        // 데이터 없음
         if (!snapshot.hasData) {
           return const SizedBox.shrink();
         }

@@ -129,9 +129,11 @@ class _LoginScreenState extends State<LoginScreen> {
                               : Icons.visibility,
                         ),
                         onPressed: () {
-                          setState(() {
-                            _obscurePassword = !_obscurePassword;
-                          });
+                          if (mounted) {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          }
                         },
                       ),
                       filled: true,

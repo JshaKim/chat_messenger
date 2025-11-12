@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
@@ -10,6 +11,7 @@ class AuthProvider with ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   User? _currentUser;
+  StreamSubscription<User?>? _authStateSubscription;
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -21,7 +23,7 @@ class AuthProvider with ChangeNotifier {
 
   AuthProvider() {
     // 인증 상태 변화 감지
-    _authService.authStateChanges.listen((user) {
+    _authStateSubscription = _authService.authStateChanges.listen((user) {
       _currentUser = user;
       notifyListeners();
 
@@ -30,6 +32,12 @@ class AuthProvider with ChangeNotifier {
         _userService.updateOnlineStatus(user.uid, true);
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _authStateSubscription?.cancel();
+    super.dispose();
   }
 
   // 회원가입
