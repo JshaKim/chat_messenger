@@ -20,98 +20,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _imagePicker = ImagePicker();
   final _userService = UserService();
 
-  // TextEditingControllers for editable fields
+  // TextEditingControllers - 단순하게만 사용
   late final TextEditingController _nicknameController;
   late final TextEditingController _statusController;
 
   bool _isLoading = false;
-  bool _hasChanges = false;
 
   @override
   void initState() {
     super.initState();
-    // Initialize controllers
+    // Controller 생성만
     _nicknameController = TextEditingController();
     _statusController = TextEditingController();
-
-    // Load initial values after first frame
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadCurrentUserData();
-    });
-
-    // Listen for changes
-    _nicknameController.addListener(_onFieldChanged);
-    _statusController.addListener(_onFieldChanged);
   }
 
   @override
   void dispose() {
-    // Remove listeners before disposing
-    _nicknameController.removeListener(_onFieldChanged);
-    _statusController.removeListener(_onFieldChanged);
-
-    // Dispose controllers
+    // Controller 해제만
     _nicknameController.dispose();
     _statusController.dispose();
     super.dispose();
   }
 
-  void _loadCurrentUserData() {
-    if (!mounted) return;
-
-    final userProvider = context.read<UserProvider>();
-    final currentUser = userProvider.currentUser;
-
-    if (currentUser != null) {
-      // controller가 dispose되었을 수 있으므로 try-catch로 보호
-      try {
-        _nicknameController.text = currentUser.displayName;
-        _statusController.text = currentUser.statusMessage ?? '';
-        setState(() {
-          _hasChanges = false;
-        });
-      } catch (e) {
-        // Controller가 이미 dispose되었다면 무시
-        print('[ProfileScreen] Controller already disposed: $e');
-      }
-    }
-  }
-
-  void _onFieldChanged() {
-    if (!mounted) return;
-
-    // controller가 dispose되었을 수 있으므로 try-catch로 보호
-    try {
-      final userProvider = context.read<UserProvider>();
-      final currentUser = userProvider.currentUser;
-
-      if (currentUser != null) {
-        final hasNicknameChanged = _nicknameController.text != currentUser.displayName;
-        final hasStatusChanged = _statusController.text != (currentUser.statusMessage ?? '');
-
-        setState(() {
-          _hasChanges = hasNicknameChanged || hasStatusChanged;
-        });
-      }
-    } catch (e) {
-      // Controller가 이미 dispose되었다면 무시
-      print('[ProfileScreen] Controller already disposed in listener: $e');
-    }
-  }
-
   Future<void> _handleSaveProfile() async {
-    if (!_hasChanges) return;
-
-    // controller가 dispose되었을 수 있으므로 안전하게 접근
-    String nickname;
-    String status;
-    try {
-      nickname = _nicknameController.text.trim();
-      status = _statusController.text.trim();
-    } catch (e) {
-      print('[ProfileScreen] Controller disposed during save: $e');
-      return;
-    }
+    final nickname = _nicknameController.text.trim();
+    final status = _statusController.text.trim();
 
     // Validation
     if (nickname.isEmpty) {
@@ -134,6 +67,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return;
     }
 
+    if (!mounted) return;
+
     setState(() {
       _isLoading = true;
     });
@@ -147,10 +82,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return;
       }
 
-      // Update nickname if changed
+      // Update nickname
       await _userService.updateDisplayName(currentUser.uid, nickname);
 
-      // Update status message if changed
+      // Update status message
       await _userService.updateStatusMessage(
         currentUser.uid,
         status.isEmpty ? null : status,
@@ -158,11 +93,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (!mounted) return;
 
-      // Reload user data - 즉시 UI 업데이트를 위해 loadCurrentUser 사용
+      // Reload user data
       await context.read<UserProvider>().loadCurrentUser(currentUser.uid);
 
-      // 컨트롤러도 최신 데이터로 업데이트 (이것이 _hasChanges를 false로 설정)
-      _loadCurrentUserData();
+      if (!mounted) return;
 
       _showSnackBar('프로필이 저장되었습니다');
     } catch (e) {
@@ -282,7 +216,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
         actions: [
-          if (_hasChanges && !_isLoading)
+          if (!_isLoading)
             TextButton(
               onPressed: _handleSaveProfile,
               child: const Text(
@@ -307,6 +241,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 color: AppColors.kakaoYellow,
               ),
             );
+          }
+
+          // Controller 값 설정 (build 내에서)
+          if (_nicknameController.text != currentUser.displayName) {
+            _nicknameController.text = currentUser.displayName;
+          }
+          if (_statusController.text != (currentUser.statusMessage ?? '')) {
+            _statusController.text = currentUser.statusMessage ?? '';
           }
 
           return SingleChildScrollView(
@@ -353,7 +295,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: AppSpacing.xl),
 
                 // 이메일 (읽기 전용)
-                // Firestore의 이메일이 없거나 기본값이면 Firebase Auth 이메일 사용
                 _buildReadOnlyField(
                   label: '이메일',
                   value: currentUser.email != 'no-email@example.com'
