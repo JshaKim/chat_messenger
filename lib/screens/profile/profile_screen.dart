@@ -138,12 +138,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (!mounted) return;
 
-      // Reload user data
-      await context.read<UserProvider>().subscribeToCurrentUser(currentUser.uid);
+      // Reload user data - 즉시 UI 업데이트를 위해 loadCurrentUser 사용
+      await context.read<UserProvider>().loadCurrentUser(currentUser.uid);
 
-      setState(() {
-        _hasChanges = false;
-      });
+      // 컨트롤러도 최신 데이터로 업데이트 (이것이 _hasChanges를 false로 설정)
+      _loadCurrentUserData();
 
       _showSnackBar('프로필이 저장되었습니다');
     } catch (e) {
