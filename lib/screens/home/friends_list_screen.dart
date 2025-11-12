@@ -379,17 +379,11 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
   }
 
   Widget _buildUserTile(UserModel user) {
-    // 상태 메시지가 있으면 표시, 없으면 온라인 상태 표시
-    final String subtitleText;
-    final Color subtitleColor;
-
-    if (user.statusMessage != null && user.statusMessage!.isNotEmpty) {
-      subtitleText = user.statusMessage!;
-      subtitleColor = Colors.grey[600]!;
-    } else {
-      subtitleText = user.isOnline ? '온라인' : _formatLastSeen(user.lastSeen);
-      subtitleColor = user.isOnline ? Colors.green : Colors.grey[600]!;
-    }
+    // 상태 메시지만 표시, 없으면 null (subtitle 숨김)
+    // isOnline 상태는 UserAvatar의 초록 점으로만 표시
+    final String? subtitleText = user.statusMessage?.isNotEmpty == true
+        ? user.statusMessage
+        : null;
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(
@@ -408,15 +402,17 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
           fontSize: 16,
         ),
       ),
-      subtitle: Text(
-        subtitleText,
-        style: TextStyle(
-          color: subtitleColor,
-          fontSize: 13,
-        ),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
+      subtitle: subtitleText != null
+          ? Text(
+              subtitleText,
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 13,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            )
+          : null,
       onTap: () => _navigateToChat(context, user),
     );
   }

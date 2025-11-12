@@ -334,9 +334,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: AppSpacing.xl),
 
                 // 이메일 (읽기 전용)
+                // Firestore의 이메일이 없거나 기본값이면 Firebase Auth 이메일 사용
                 _buildReadOnlyField(
                   label: '이메일',
-                  value: currentUser.email,
+                  value: currentUser.email != 'no-email@example.com'
+                      ? currentUser.email
+                      : (authUser.email ?? currentUser.email),
                   icon: Icons.email,
                 ),
 
