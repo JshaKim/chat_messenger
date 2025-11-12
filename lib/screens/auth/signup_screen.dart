@@ -97,6 +97,9 @@ class _SignupScreenState extends State<SignupScreen> {
                   // 닉네임 입력 필드
                   TextFormField(
                     controller: _displayNameController,
+                    keyboardType: TextInputType.text,
+                    textInputAction: TextInputAction.next,
+                    enableIMEPersonalizedLearning: true,
                     decoration: InputDecoration(
                       labelText: '닉네임',
                       prefixIcon: const Icon(Icons.person),
@@ -126,6 +129,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
                     decoration: InputDecoration(
                       labelText: '이메일',
                       prefixIcon: const Icon(Icons.email),
@@ -152,6 +156,9 @@ class _SignupScreenState extends State<SignupScreen> {
                   TextFormField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
+                    keyboardType: TextInputType.text,
+                    textInputAction: TextInputAction.next,
+                    enableIMEPersonalizedLearning: true,
                     decoration: InputDecoration(
                       labelText: '비밀번호',
                       prefixIcon: const Icon(Icons.lock),
@@ -190,6 +197,9 @@ class _SignupScreenState extends State<SignupScreen> {
                   TextFormField(
                     controller: _confirmPasswordController,
                     obscureText: _obscureConfirmPassword,
+                    keyboardType: TextInputType.text,
+                    textInputAction: TextInputAction.done,
+                    enableIMEPersonalizedLearning: true,
                     decoration: InputDecoration(
                       labelText: '비밀번호 확인',
                       prefixIcon: const Icon(Icons.lock_outline),

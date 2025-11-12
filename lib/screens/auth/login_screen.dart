@@ -88,6 +88,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
+                    enableIMEPersonalizedLearning: true,
                     decoration: InputDecoration(
                       labelText: '이메일',
                       prefixIcon: const Icon(Icons.email),
@@ -114,6 +116,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   TextFormField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
+                    keyboardType: TextInputType.text,
+                    textInputAction: TextInputAction.done,
+                    enableIMEPersonalizedLearning: true,
                     decoration: InputDecoration(
                       labelText: '비밀번호',
                       prefixIcon: const Icon(Icons.lock),
@@ -145,6 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       }
                       return null;
                     },
+                    onFieldSubmitted: (_) => _handleLogin(),
                   ),
                   const SizedBox(height: 24),
 
