@@ -8,6 +8,7 @@ import '../../providers/chat_provider.dart';
 import '../../services/user_service.dart';
 import '../../widgets/user_avatar.dart';
 import '../../utils/constants.dart';
+import '../auth/login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -176,15 +177,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final userProvider = context.read<UserProvider>();
       final chatProvider = context.read<ChatProvider>();
 
-      await authProvider.signOut();
+      try {
+        // Provider 초기화
+        userProvider.clear();
+        chatProvider.clear();
 
-      // Provider 초기화
-      userProvider.clear();
-      chatProvider.clear();
+        // Firebase 로그아웃
+        await authProvider.signOut();
 
-      if (!mounted) return;
+        if (!mounted) return;
 
-      _showSnackBar('로그아웃되었습니다');
+        // 모든 화면을 제거하고 로그인 화면으로 이동
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+          (route) => false, // 모든 이전 화면 제거
+        );
+      } catch (e) {
+        if (!mounted) return;
+        _showSnackBar('로그아웃 실패: $e', isError: true);
+      }
     }
   }
 
