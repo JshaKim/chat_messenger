@@ -203,4 +203,46 @@ class UserService {
       throw Exception('닉네임 업데이트 실패: $e');
     }
   }
+
+  // 상태 메시지 업데이트
+  Future<void> updateStatusMessage(String uid, String? statusMessage) async {
+    try {
+      await _firestore
+          .collection(_usersCollection)
+          .doc(uid)
+          .update({'statusMessage': statusMessage});
+    } catch (e) {
+      throw Exception('상태 메시지 업데이트 실패: $e');
+    }
+  }
+
+  // 이메일로 사용자 검색
+  Future<UserModel?> getUserByEmail(String email) async {
+    try {
+      print('[UserService] 이메일로 사용자 검색: $email');
+      final querySnapshot = await _firestore
+          .collection(_usersCollection)
+          .where('email', isEqualTo: email)
+          .limit(1)
+          .get();
+
+      if (querySnapshot.docs.isEmpty) {
+        print('[UserService] 사용자를 찾을 수 없음: $email');
+        return null;
+      }
+
+      final doc = querySnapshot.docs.first;
+      try {
+        final user = UserModel.fromJson(doc.data());
+        print('[UserService] 사용자 찾음: ${user.displayName} (${user.uid})');
+        return user;
+      } catch (e) {
+        print('[UserService] ❌ 사용자 데이터 파싱 실패: $e');
+        return null;
+      }
+    } catch (e) {
+      print('[UserService] ❌ 이메일 검색 실패: $e');
+      throw Exception('사용자 검색 실패: $e');
+    }
+  }
 }

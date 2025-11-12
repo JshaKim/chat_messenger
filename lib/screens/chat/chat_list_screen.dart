@@ -215,10 +215,17 @@ class _ChatListScreenState extends State<ChatListScreen> {
             children: [
               Expanded(
                 child: Text(
-                  chatRoom.lastMessage ?? '',
+                  chatRoom.lastMessage ??
+                      (otherUser.statusMessage?.isNotEmpty == true
+                          ? otherUser.statusMessage!
+                          : '채팅을 시작하세요'),
                   style: TextStyle(
                     color: Colors.grey[600],
                     fontSize: 14,
+                    fontStyle: chatRoom.lastMessage == null &&
+                            otherUser.statusMessage?.isNotEmpty == true
+                        ? FontStyle.italic
+                        : FontStyle.normal,
                   ),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,

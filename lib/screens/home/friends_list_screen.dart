@@ -4,6 +4,7 @@ import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/chat_provider.dart';
+import '../../services/user_service.dart';
 import '../../widgets/user_avatar.dart';
 import '../chat/chat_room_screen.dart';
 
@@ -16,6 +17,7 @@ class FriendsListScreen extends StatefulWidget {
 
 class _FriendsListScreenState extends State<FriendsListScreen> {
   final _searchController = TextEditingController();
+  final _userService = UserService();
   bool _isSearching = false;
 
   @override
@@ -79,6 +81,97 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
       userProvider.clear();
       chatProvider.clear();
     }
+  }
+
+  Future<void> _showAddFriendDialog() async {
+    final emailController = TextEditingController();
+    final authProvider = context.read<AuthProvider>();
+    final currentUserId = authProvider.currentUser?.uid;
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('친구 추가'),
+        content: TextField(
+          controller: emailController,
+          decoration: const InputDecoration(
+            hintText: '이메일 주소 입력',
+            prefixIcon: Icon(Icons.email),
+            border: OutlineInputBorder(),
+          ),
+          keyboardType: TextInputType.emailAddress,
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFEE500),
+              foregroundColor: Colors.black87,
+            ),
+            child: const Text('추가'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true && mounted) {
+      final email = emailController.text.trim();
+
+      if (email.isEmpty) {
+        _showSnackBar('이메일을 입력해주세요', isError: true);
+        return;
+      }
+
+      // 이메일 형식 검증
+      final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+      if (!emailRegex.hasMatch(email)) {
+        _showSnackBar('올바른 이메일 형식이 아닙니다', isError: true);
+        return;
+      }
+
+      try {
+        // 사용자 검색
+        final user = await _userService.getUserByEmail(email);
+
+        if (user == null) {
+          _showSnackBar('사용자를 찾을 수 없습니다', isError: true);
+          return;
+        }
+
+        // 자기 자신인지 확인
+        if (user.uid == currentUserId) {
+          _showSnackBar('자신을 추가할 수 없습니다', isError: true);
+          return;
+        }
+
+        // 성공 메시지
+        // 참고: 현재는 모든 사용자가 친구 목록에 표시되므로, 실제로 추가 작업은 없음
+        _showSnackBar('${user.displayName}님을 찾았습니다');
+      } catch (e) {
+        print('친구 추가 오류: $e');
+        _showSnackBar('친구 추가 중 오류가 발생했습니다', isError: true);
+      }
+    }
+
+    emailController.dispose();
+  }
+
+  void _showSnackBar(String message, {bool isError = false}) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red : const Color(0xFFFEE500),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   Future<void> _navigateToChat(BuildContext context, UserModel otherUser) async {
@@ -149,6 +242,12 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
                 ),
               ),
         actions: [
+          if (!_isSearching)
+            IconButton(
+              icon: const Icon(Icons.person_add, color: Colors.black87),
+              onPressed: _showAddFriendDialog,
+              tooltip: '친구 추가',
+            ),
           _isSearching
               ? IconButton(
                   icon: const Icon(Icons.close, color: Colors.black87),
@@ -280,6 +379,18 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
   }
 
   Widget _buildUserTile(UserModel user) {
+    // 상태 메시지가 있으면 표시, 없으면 온라인 상태 표시
+    final String subtitleText;
+    final Color subtitleColor;
+
+    if (user.statusMessage != null && user.statusMessage!.isNotEmpty) {
+      subtitleText = user.statusMessage!;
+      subtitleColor = Colors.grey[600]!;
+    } else {
+      subtitleText = user.isOnline ? '온라인' : _formatLastSeen(user.lastSeen);
+      subtitleColor = user.isOnline ? Colors.green : Colors.grey[600]!;
+    }
+
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(
         horizontal: 16,
@@ -298,11 +409,13 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
         ),
       ),
       subtitle: Text(
-        user.isOnline ? '온라인' : _formatLastSeen(user.lastSeen),
+        subtitleText,
         style: TextStyle(
-          color: user.isOnline ? Colors.green : Colors.grey[600],
+          color: subtitleColor,
           fontSize: 13,
         ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
       ),
       onTap: () => _navigateToChat(context, user),
     );
