@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import '../models/chat_room_model.dart';
@@ -17,6 +18,11 @@ class ChatProvider with ChangeNotifier {
   String? _errorMessage;
   int _totalUnreadCount = 0;
 
+  StreamSubscription<List<ChatRoomModel>>? _chatRoomsSubscription;
+  StreamSubscription<int>? _unreadCountSubscription;
+  StreamSubscription<ChatRoomModel?>? _currentChatRoomSubscription;
+  StreamSubscription<List<MessageModel>>? _messagesSubscription;
+
   List<ChatRoomModel> get chatRooms => _chatRooms;
   ChatRoomModel? get currentChatRoom => _currentChatRoom;
   List<MessageModel> get messages => _messages;
@@ -27,7 +33,8 @@ class ChatProvider with ChangeNotifier {
 
   // 채팅방 목록 스트림 구독
   void subscribeToChatRooms(String userId) {
-    _chatService.getChatRooms(userId).listen(
+    _chatRoomsSubscription?.cancel();
+    _chatRoomsSubscription = _chatService.getChatRooms(userId).listen(
       (chatRooms) {
         _chatRooms = chatRooms;
         notifyListeners();
@@ -40,7 +47,8 @@ class ChatProvider with ChangeNotifier {
 
   // 전체 안읽은 메시지 개수 스트림 구독
   void subscribeToUnreadCount(String userId) {
-    _chatService.getTotalUnreadCount(userId).listen(
+    _unreadCountSubscription?.cancel();
+    _unreadCountSubscription = _chatService.getTotalUnreadCount(userId).listen(
       (count) {
         _totalUnreadCount = count;
         notifyListeners();
@@ -76,8 +84,12 @@ class ChatProvider with ChangeNotifier {
 
   // 현재 채팅방 설정 및 메시지 구독
   void setCurrentChatRoom(String chatRoomId) {
+    // 기존 subscription 취소
+    _currentChatRoomSubscription?.cancel();
+    _messagesSubscription?.cancel();
+
     // 현재 채팅방 정보 구독
-    _chatService.getChatRoomStream(chatRoomId).listen(
+    _currentChatRoomSubscription = _chatService.getChatRoomStream(chatRoomId).listen(
       (chatRoom) {
         _currentChatRoom = chatRoom;
         notifyListeners();
@@ -88,7 +100,7 @@ class ChatProvider with ChangeNotifier {
     );
 
     // 메시지 목록 구독
-    _chatService.getMessages(chatRoomId).listen(
+    _messagesSubscription = _chatService.getMessages(chatRoomId).listen(
       (messages) {
         _messages = messages;
         notifyListeners();
@@ -233,6 +245,11 @@ class ChatProvider with ChangeNotifier {
 
   // Provider 초기화 (로그아웃 시 호출)
   void clear() {
+    _chatRoomsSubscription?.cancel();
+    _unreadCountSubscription?.cancel();
+    _currentChatRoomSubscription?.cancel();
+    _messagesSubscription?.cancel();
+
     _chatRooms = [];
     _currentChatRoom = null;
     _messages = [];
@@ -241,5 +258,14 @@ class ChatProvider with ChangeNotifier {
     _isSending = false;
     _totalUnreadCount = 0;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _chatRoomsSubscription?.cancel();
+    _unreadCountSubscription?.cancel();
+    _currentChatRoomSubscription?.cancel();
+    _messagesSubscription?.cancel();
+    super.dispose();
   }
 }
