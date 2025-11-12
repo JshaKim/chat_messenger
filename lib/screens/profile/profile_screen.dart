@@ -79,53 +79,90 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (currentUser == null) return;
 
-    final TextEditingController controller = TextEditingController(
-      text: currentDisplayName,
-    );
+    String? newDisplayName;
+    String? errorMessage;
 
-    final newDisplayName = await showDialog<String>(
+    await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('닉네임 변경'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            labelText: '새 닉네임',
-            hintText: '2-20자',
-          ),
-          maxLength: 20,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
-          ),
-          TextButton(
-            onPressed: () {
-              final text = controller.text.trim();
-              if (text.isNotEmpty && text.length >= 2) {
-                Navigator.pop(context, text);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('닉네임은 2자 이상이어야 합니다'),
-                    backgroundColor: Colors.red,
+      builder: (dialogContext) {
+        final TextEditingController controller = TextEditingController(
+          text: currentDisplayName,
+        );
+
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('닉네임 변경'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: controller,
+                    decoration: const InputDecoration(
+                      labelText: '새 닉네임',
+                      hintText: '2-20자',
+                    ),
+                    maxLength: 20,
+                    autofocus: true,
                   ),
-                );
-              }
-            },
-            child: const Text('변경'),
-          ),
-        ],
-      ),
+                  if (errorMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Text(
+                        errorMessage!,
+                        style: const TextStyle(
+                          color: Colors.red,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    controller.dispose();
+                    Navigator.pop(dialogContext);
+                  },
+                  child: const Text('취소'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    final text = controller.text.trim();
+                    if (text.isEmpty) {
+                      setState(() {
+                        errorMessage = '닉네임을 입력해주세요';
+                      });
+                    } else if (text.length < 2) {
+                      setState(() {
+                        errorMessage = '닉네임은 2자 이상이어야 합니다';
+                      });
+                    } else if (text.length > 20) {
+                      setState(() {
+                        errorMessage = '닉네임은 20자 이하여야 합니다';
+                      });
+                    } else {
+                      newDisplayName = text;
+                      controller.dispose();
+                      Navigator.pop(dialogContext);
+                    }
+                  },
+                  child: const Text('변경'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
 
-    controller.dispose();
+    // 다이얼로그가 닫힌 후 mounted 체크
+    if (!mounted) return;
 
     if (newDisplayName != null && newDisplayName != currentDisplayName) {
       final success = await userProvider.updateDisplayName(
         uid: currentUser.uid,
-        displayName: newDisplayName,
+        displayName: newDisplayName!,
       );
 
       if (!mounted) return;
