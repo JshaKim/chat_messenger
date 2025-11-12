@@ -41,13 +41,20 @@ class UserService {
           .get();
 
       if (doc.exists && doc.data() != null) {
-        return UserModel.fromJson(doc.data()!);
+        try {
+          return UserModel.fromJson(doc.data()!);
+        } catch (e) {
+          print('[UserService] ❌ 사용자 데이터 파싱 실패 ($uid): $e');
+          print('[UserService] 데이터: ${doc.data()}');
+          throw Exception('사용자 데이터 형식이 올바르지 않습니다: $e');
+        }
       }
 
       // 사용자 문서가 없으면 null 반환 (AuthProvider에서 생성함)
       return null;
     } catch (e) {
-      throw Exception('사용자 정보 조회 실패: $e');
+      print('[UserService] ❌ 사용자 정보 조회 실패: $e');
+      rethrow;
     }
   }
 
@@ -59,7 +66,12 @@ class UserService {
         .snapshots()
         .map((doc) {
       if (doc.exists && doc.data() != null) {
-        return UserModel.fromJson(doc.data()!);
+        try {
+          return UserModel.fromJson(doc.data()!);
+        } catch (e) {
+          print('[UserService] ❌ 사용자 데이터 파싱 실패 ($uid): $e');
+          return null;
+        }
       }
       return null;
     });
@@ -84,9 +96,25 @@ class UserService {
         .orderBy('displayName')
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => UserModel.fromJson(doc.data()))
-          .toList();
+      return snapshot.docs.map((doc) {
+        try {
+          final data = doc.data();
+          print('[UserService] 사용자 데이터 파싱: ${doc.id}');
+          return UserModel.fromJson(data);
+        } catch (e) {
+          print('[UserService] ❌ 사용자 데이터 파싱 실패 (${doc.id}): $e');
+          // 파싱 실패한 사용자는 기본값으로 생성
+          return UserModel(
+            uid: doc.id,
+            email: 'error@example.com',
+            displayName: '데이터 오류',
+            photoURL: null,
+            createdAt: DateTime.now(),
+            lastSeen: DateTime.now(),
+            isOnline: false,
+          );
+        }
+      }).toList();
     });
   }
 
@@ -98,9 +126,23 @@ class UserService {
         .where('displayName', isLessThanOrEqualTo: '$query\uf8ff')
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => UserModel.fromJson(doc.data()))
-          .toList();
+      return snapshot.docs.map((doc) {
+        try {
+          return UserModel.fromJson(doc.data());
+        } catch (e) {
+          print('[UserService] ❌ 사용자 데이터 파싱 실패 (${doc.id}): $e');
+          // 파싱 실패한 사용자는 기본값으로 생성
+          return UserModel(
+            uid: doc.id,
+            email: 'error@example.com',
+            displayName: '데이터 오류',
+            photoURL: null,
+            createdAt: DateTime.now(),
+            lastSeen: DateTime.now(),
+            isOnline: false,
+          );
+        }
+      }).toList();
     });
   }
 

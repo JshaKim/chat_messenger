@@ -21,12 +21,16 @@ class UserModel {
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
-      uid: json['uid'] as String,
-      email: json['email'] as String,
-      displayName: json['displayName'] as String,
+      uid: json['uid'] as String? ?? '',
+      email: json['email'] as String? ?? 'no-email@example.com',
+      displayName: json['displayName'] as String? ?? '이름 없음',
       photoURL: json['photoURL'] as String?,
-      createdAt: (json['createdAt'] as Timestamp).toDate(),
-      lastSeen: (json['lastSeen'] as Timestamp).toDate(),
+      createdAt: json['createdAt'] != null
+          ? (json['createdAt'] as Timestamp).toDate()
+          : DateTime.now(),
+      lastSeen: json['lastSeen'] != null
+          ? (json['lastSeen'] as Timestamp).toDate()
+          : DateTime.now(),
       isOnline: json['isOnline'] as bool? ?? false,
     );
   }
