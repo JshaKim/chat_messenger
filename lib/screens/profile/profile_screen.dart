@@ -19,13 +19,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late TextEditingController _nicknameController;
   late TextEditingController _statusController;
   bool _isLoading = false;
-  bool _initialized = false;
+  String? _previousUserId;
 
   @override
   void initState() {
     super.initState();
     _nicknameController = TextEditingController();
     _statusController = TextEditingController();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    // UserProvider의 currentUser가 변경되었을 때만 controller 업데이트
+    final currentUser = context.watch<UserProvider>().currentUser;
+    if (currentUser != null && _previousUserId != currentUser.uid) {
+      _nicknameController.text = currentUser.displayName;
+      _statusController.text = currentUser.statusMessage ?? '';
+      _previousUserId = currentUser.uid;
+    }
   }
 
   @override
@@ -140,20 +153,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currentUser = context.watch<UserProvider>().currentUser;
+    final currentUser = context.read<UserProvider>().currentUser;
     final authUser = context.watch<AuthProvider>().currentUser;
 
     if (currentUser == null || authUser == null) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
-    }
-
-    // 한 번만 초기화
-    if (!_initialized) {
-      _nicknameController.text = currentUser.displayName;
-      _statusController.text = currentUser.statusMessage ?? '';
-      _initialized = true;
     }
 
     return Scaffold(
