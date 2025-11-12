@@ -42,6 +42,7 @@ class AuthProvider with ChangeNotifier {
       _setLoading(true);
       _clearError();
 
+      print('[AuthProvider] 회원가입 시작: $email');
       // Firebase Auth 회원가입 (Firestore 사용자 문서 자동 생성됨)
       await _authService.signUp(
         email: email,
@@ -49,9 +50,11 @@ class AuthProvider with ChangeNotifier {
         displayName: displayName,
       );
 
+      print('[AuthProvider] 회원가입 성공');
       _setLoading(false);
       return true;
     } catch (e) {
+      print('[AuthProvider] 회원가입 실패: $e');
       _setError(e.toString());
       _setLoading(false);
       return false;
@@ -67,29 +70,16 @@ class AuthProvider with ChangeNotifier {
       _setLoading(true);
       _clearError();
 
-      final userCredential = await _authService.signIn(
+      // AuthService에서 Firestore 문서 체크 및 자동 생성 처리됨
+      await _authService.signIn(
         email: email,
         password: password,
       );
 
-      // 로그인 후 Firestore에 사용자 문서가 있는지 확인
-      if (userCredential.user != null) {
-        final existingUser = await _userService.getUserById(userCredential.user!.uid);
-
-        // 사용자 문서가 없으면 생성
-        if (existingUser == null) {
-          await _userService.createUser(
-            uid: userCredential.user!.uid,
-            email: userCredential.user!.email ?? email,
-            displayName: userCredential.user!.displayName ?? email.split('@')[0],
-            photoURL: userCredential.user!.photoURL,
-          );
-        }
-      }
-
       _setLoading(false);
       return true;
     } catch (e) {
+      print('[AuthProvider] 로그인 실패: $e');
       _setError(e.toString());
       _setLoading(false);
       return false;
