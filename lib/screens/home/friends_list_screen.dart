@@ -264,11 +264,6 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
                   icon: const Icon(Icons.search, color: Colors.black87),
                   onPressed: _startSearch,
                 ),
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.black87),
-            onPressed: _handleLogout,
-            tooltip: '로그아웃',
-          ),
         ],
       ),
       body: Consumer<UserProvider>(
