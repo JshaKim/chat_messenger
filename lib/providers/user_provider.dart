@@ -130,6 +130,12 @@ class UserProvider with ChangeNotifier {
     }
   }
 
+  // 현재 사용자 직접 업데이트 (로컬 상태만)
+  void updateCurrentUser(UserModel user) {
+    _currentUser = user;
+    notifyListeners();
+  }
+
   // 온라인 상태 업데이트
   Future<void> updateOnlineStatus(String uid, bool isOnline) async {
     try {
