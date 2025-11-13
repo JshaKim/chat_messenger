@@ -63,13 +63,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       final user = userProvider.currentUser;
       if (user != null) {
-        // 값이 실제로 변경된 경우만 업데이트
-        if (_nicknameController.text != user.displayName) {
-          _nicknameController.text = user.displayName;
-        }
-        if (_statusController.text != (user.statusMessage ?? '')) {
-          _statusController.text = user.statusMessage ?? '';
-        }
+        // 다음 프레임에서 안전하게 업데이트 (현재 빌드 사이클 후)
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          if (_nicknameFocusNode.hasFocus || _statusFocusNode.hasFocus) return;
+
+          // 값이 실제로 변경된 경우만 업데이트
+          if (_nicknameController.text != user.displayName) {
+            _nicknameController.text = user.displayName;
+          }
+          if (_statusController.text != (user.statusMessage ?? '')) {
+            _statusController.text = user.statusMessage ?? '';
+          }
+        });
       }
     };
 
