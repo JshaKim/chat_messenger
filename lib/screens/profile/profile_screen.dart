@@ -8,51 +8,87 @@ import '../../widgets/user_avatar.dart';
 import '../../utils/constants.dart';
 import '../auth/login_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
-  Future<void> _saveProfile(
-    BuildContext context,
-    String nickname,
-    String status,
-  ) async {
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  late TextEditingController _nicknameController;
+  late TextEditingController _statusController;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Controller 생성 및 초기값 설정
+    final currentUser = context.read<UserProvider>().currentUser;
+    _nicknameController = TextEditingController(
+      text: currentUser?.displayName ?? '',
+    );
+    _statusController = TextEditingController(
+      text: currentUser?.statusMessage ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _nicknameController.dispose();
+    _statusController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveProfile() async {
+    final nickname = _nicknameController.text.trim();
+    final status = _statusController.text.trim();
+
     if (nickname.isEmpty) {
-      _showSnackBar(context, '닉네임을 입력해주세요', isError: true);
+      _showSnackBar('닉네임을 입력해주세요', isError: true);
       return;
     }
 
     if (nickname.length < 2 || nickname.length > 20) {
-      _showSnackBar(context, '닉네임은 2-20자여야 합니다', isError: true);
+      _showSnackBar('닉네임은 2-20자여야 합니다', isError: true);
       return;
     }
 
     if (status.length > 50) {
-      _showSnackBar(context, '상태 메시지는 50자 이하여야 합니다', isError: true);
+      _showSnackBar('상태 메시지는 50자 이하여야 합니다', isError: true);
       return;
     }
+
+    if (!mounted) return;
+
+    setState(() => _isLoading = true);
 
     try {
       final uid = context.read<AuthProvider>().currentUser?.uid;
       if (uid == null) {
-        _showSnackBar(context, '사용자 정보를 찾을 수 없습니다', isError: true);
+        _showSnackBar('사용자 정보를 찾을 수 없습니다', isError: true);
         return;
       }
 
+      // Firestore만 업데이트 (Provider 업데이트 안 함)
       await FirebaseFirestore.instance.collection('users').doc(uid).update({
         'displayName': nickname,
         'statusMessage': status.isEmpty ? null : status,
       });
 
-      if (!context.mounted) return;
+      if (!mounted) return;
 
-      _showSnackBar(context, '프로필이 저장되었습니다');
+      _showSnackBar('프로필이 저장되었습니다');
     } catch (e) {
-      if (!context.mounted) return;
-      _showSnackBar(context, '저장 실패: $e', isError: true);
+      if (!mounted) return;
+      _showSnackBar('저장 실패: $e', isError: true);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  Future<void> _handleLogout(BuildContext context) async {
+  Future<void> _handleLogout() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -74,27 +110,28 @@ class ProfileScreen extends StatelessWidget {
       ),
     );
 
-    if (confirmed == true && context.mounted) {
+    if (confirmed == true && mounted) {
       try {
         context.read<UserProvider>().clear();
         context.read<ChatProvider>().clear();
         await context.read<AuthProvider>().signOut();
 
-        if (!context.mounted) return;
+        if (!mounted) return;
 
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const LoginScreen()),
           (route) => false,
         );
       } catch (e) {
-        if (!context.mounted) return;
-        _showSnackBar(context, '로그아웃 실패: $e', isError: true);
+        if (!mounted) return;
+        _showSnackBar('로그아웃 실패: $e', isError: true);
       }
     }
   }
 
-  void _showSnackBar(BuildContext context, String message,
-      {bool isError = false}) {
+  void _showSnackBar(String message, {bool isError = false}) {
+    if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -115,12 +152,6 @@ class ProfileScreen extends StatelessWidget {
       );
     }
 
-    // Build 메서드 안에서 controller 생성 (disposal 문제 회피)
-    final nicknameController =
-        TextEditingController(text: currentUser.displayName);
-    final statusController =
-        TextEditingController(text: currentUser.statusMessage ?? '');
-
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -133,21 +164,18 @@ class ProfileScreen extends StatelessWidget {
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () {
-              final nickname = nicknameController.text.trim();
-              final status = statusController.text.trim();
-              _saveProfile(context, nickname, status);
-            },
-            child: const Text(
-              '저장',
-              style: TextStyle(
-                color: Colors.black87,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
+          if (!_isLoading)
+            TextButton(
+              onPressed: _saveProfile,
+              child: const Text(
+                '저장',
+                style: TextStyle(
+                  color: Colors.black87,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
             ),
-          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -178,7 +206,8 @@ class ProfileScreen extends StatelessWidget {
 
             // 닉네임 (편집 가능)
             TextField(
-              controller: nicknameController,
+              controller: _nicknameController,
+              enabled: !_isLoading,
               maxLength: 20,
               decoration: InputDecoration(
                 labelText: '닉네임',
@@ -203,7 +232,8 @@ class ProfileScreen extends StatelessWidget {
 
             // 상태 메시지 (편집 가능)
             TextField(
-              controller: statusController,
+              controller: _statusController,
+              enabled: !_isLoading,
               maxLength: 50,
               decoration: InputDecoration(
                 labelText: '상태 메시지',
@@ -254,7 +284,7 @@ class ProfileScreen extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () => _handleLogout(context),
+                onPressed: _isLoading ? null : _handleLogout,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red,
                   foregroundColor: Colors.white,
@@ -263,13 +293,22 @@ class ProfileScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: const Text(
-                  '로그아웃',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text(
+                        '로그아웃',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
               ),
             ),
 
