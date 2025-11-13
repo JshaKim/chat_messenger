@@ -351,6 +351,21 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
               if (provider.currentUser != null)
                 _buildMyProfileCard(provider.currentUser!),
 
+              // 친구 목록 헤더
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                color: Colors.grey[100],
+                child: Text(
+                  '친구 ${filteredUsers.length}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+
               // 친구 목록
               Expanded(
                 child: filteredUsers.isEmpty
@@ -395,11 +410,23 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
         ? currentUser.email
         : (authUser?.email ?? currentUser.email);
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.all(16),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFDE7), // 연한 노란색 배경
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFFFEE500).withOpacity(0.3),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -409,7 +436,7 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
             UserAvatar(
               photoURL: currentUser.photoURL,
               isOnline: currentUser.isOnline,
-              radius: 32,
+              radius: 36, // 더 크게
             ),
             const SizedBox(width: 16),
 
@@ -422,12 +449,12 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
                   Text(
                     currentUser.displayName,
                     style: const TextStyle(
-                      fontSize: 18,
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: Colors.black87,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
 
                   // 상태 메시지
                   if (currentUser.statusMessage != null &&
@@ -436,7 +463,7 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
                       currentUser.statusMessage!,
                       style: TextStyle(
                         fontSize: 14,
-                        color: Colors.grey[600],
+                        color: Colors.grey[700],
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -453,33 +480,51 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
                   const SizedBox(height: 4),
 
                   // 이메일
-                  Text(
-                    displayEmail,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[500],
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.email_outlined,
+                        size: 14,
+                        color: Colors.grey[600],
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          displayEmail,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
 
             // 프로필 편집 버튼
-            IconButton(
-              icon: const Icon(Icons.edit, color: Colors.grey),
-              onPressed: () {
-                // 프로필 탭으로 이동 (HomeScreen의 state를 찾아서 인덱스 변경)
-                final homeState = context.findAncestorStateOfType<State<StatefulWidget>>();
-                if (homeState != null && homeState.mounted) {
-                  // HomeScreen의 setState를 통해 탭 인덱스를 2 (프로필)로 변경
-                  (homeState as dynamic).setState(() {
-                    (homeState as dynamic)._currentIndex = 2;
-                  });
-                }
-              },
-              tooltip: '프로필 편집',
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.edit, color: Colors.black87, size: 20),
+                onPressed: () {
+                  // 프로필 탭으로 이동 (HomeScreen의 state를 찾아서 인덱스 변경)
+                  final homeState = context.findAncestorStateOfType<State<StatefulWidget>>();
+                  if (homeState != null && homeState.mounted) {
+                    // HomeScreen의 setState를 통해 탭 인덱스를 2 (프로필)로 변경
+                    (homeState as dynamic).setState(() {
+                      (homeState as dynamic)._currentIndex = 2;
+                    });
+                  }
+                },
+                tooltip: '프로필 편집',
+              ),
             ),
           ],
         ),
