@@ -18,71 +18,27 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   late TextEditingController _nicknameController;
   late TextEditingController _statusController;
-  late FocusNode _nicknameFocusNode;
-  late FocusNode _statusFocusNode;
   bool _isLoading = false;
-  UserProvider? _userProvider; // Provider 인스턴스 저장
 
   @override
   void initState() {
     super.initState();
-    _nicknameController = TextEditingController();
-    _statusController = TextEditingController();
-    _nicknameFocusNode = FocusNode();
-    _statusFocusNode = FocusNode();
 
-    // 첫 프레임 렌더링 후 초기값 설정 및 리스너 등록
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-
-      // Provider 인스턴스 저장 (dispose에서 사용)
-      _userProvider = context.read<UserProvider>();
-
-      final currentUser = _userProvider!.currentUser;
-      if (currentUser != null) {
-        _nicknameController.text = currentUser.displayName;
-        _statusController.text = currentUser.statusMessage ?? '';
-      }
-
-      // Provider 리스너 등록 (사용자 데이터 변경 시 controller 업데이트)
-      _userProvider!.addListener(_updateControllersFromProvider);
-    });
+    // Controller 생성 및 초기값 설정
+    final currentUser = context.read<UserProvider>().currentUser;
+    _nicknameController = TextEditingController(
+      text: currentUser?.displayName ?? '',
+    );
+    _statusController = TextEditingController(
+      text: currentUser?.statusMessage ?? '',
+    );
   }
 
   @override
   void dispose() {
-    // 리스너 먼저 제거 (저장된 인스턴스 사용, context 사용 안 함!)
-    _userProvider?.removeListener(_updateControllersFromProvider);
-
-    // 그 다음 controller와 FocusNode dispose
     _nicknameController.dispose();
     _statusController.dispose();
-    _nicknameFocusNode.dispose();
-    _statusFocusNode.dispose();
     super.dispose();
-  }
-
-  // Provider 변경 시 controller 업데이트 (사용자 입력 중이 아닐 때만)
-  void _updateControllersFromProvider() {
-    if (!mounted) return;
-
-    final currentUser = _userProvider?.currentUser;
-    if (currentUser == null) return;
-
-    // 닉네임 필드가 포커스 중이 아닐 때만 업데이트
-    if (!_nicknameFocusNode.hasFocus) {
-      if (_nicknameController.text != currentUser.displayName) {
-        _nicknameController.text = currentUser.displayName;
-      }
-    }
-
-    // 상태 메시지 필드가 포커스 중이 아닐 때만 업데이트
-    if (!_statusFocusNode.hasFocus) {
-      final newStatus = currentUser.statusMessage ?? '';
-      if (_statusController.text != newStatus) {
-        _statusController.text = newStatus;
-      }
-    }
   }
 
   Future<void> _saveProfile() async {
@@ -115,24 +71,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return;
       }
 
-      // Firestore 업데이트
+      // Firestore만 업데이트 (Provider 업데이트 안 함)
       await FirebaseFirestore.instance.collection('users').doc(uid).update({
         'displayName': nickname,
         'statusMessage': status.isEmpty ? null : status,
       });
 
       if (!mounted) return;
-
-      // Provider 직접 업데이트 (로컬 상태)
-      final currentUser = context.read<UserProvider>().currentUser;
-      if (currentUser != null) {
-        context.read<UserProvider>().updateCurrentUser(
-              currentUser.copyWith(
-                displayName: nickname,
-                statusMessage: status.isEmpty ? null : status,
-              ),
-            );
-      }
 
       _showSnackBar('프로필이 저장되었습니다');
     } catch (e) {
@@ -262,7 +207,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // 닉네임 (편집 가능)
             TextField(
               controller: _nicknameController,
-              focusNode: _nicknameFocusNode,
               enabled: !_isLoading,
               maxLength: 20,
               decoration: InputDecoration(
@@ -289,7 +233,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // 상태 메시지 (편집 가능)
             TextField(
               controller: _statusController,
-              focusNode: _statusFocusNode,
               enabled: !_isLoading,
               maxLength: 50,
               decoration: InputDecoration(
