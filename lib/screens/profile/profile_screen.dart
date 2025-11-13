@@ -18,40 +18,24 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   late TextEditingController _nicknameController;
   late TextEditingController _statusController;
+  late FocusNode _nicknameFocusNode;
+  late FocusNode _statusFocusNode;
   bool _isLoading = false;
 
   // 핵심 1: Provider 리스너를 별도로 관리
   VoidCallback? _providerListener;
-
-  // 핵심 2: 사용자 입력 중인지 추적
-  bool _isUserEditing = false;
 
   @override
   void initState() {
     super.initState();
     _nicknameController = TextEditingController();
     _statusController = TextEditingController();
+    _nicknameFocusNode = FocusNode();
+    _statusFocusNode = FocusNode();
 
-    // 핵심 3: 컨트롤러에 직접 리스너 등록
-    _nicknameController.addListener(_onUserEdit);
-    _statusController.addListener(_onUserEdit);
-
-    // 핵심 4: 첫 프레임 후 Provider 연결
+    // 첫 프레임 후 Provider 연결
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _setupProviderListener();
-    });
-  }
-
-  void _onUserEdit() {
-    // 사용자가 입력 중임을 표시
-    _isUserEditing = true;
-    // 3초 후 플래그 리셋 (디바운싱)
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        setState(() {
-          _isUserEditing = false;
-        });
-      }
     });
   }
 
@@ -67,9 +51,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _statusController.text = currentUser.statusMessage ?? '';
     }
 
-    // Provider 리스너 설정
+    // Provider 리스너 설정 - FocusNode로 TextField focus 상태 확인
     _providerListener = () {
-      if (!mounted || _isUserEditing) return;
+      // mounted 체크
+      if (!mounted) return;
+
+      // 어느 TextField라도 focus를 가지고 있으면 업데이트하지 않음
+      if (_nicknameFocusNode.hasFocus || _statusFocusNode.hasFocus) {
+        return;
+      }
 
       final user = userProvider.currentUser;
       if (user != null) {
@@ -88,7 +78,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   void dispose() {
-    // 핵심 5: 올바른 dispose 순서
+    // 올바른 dispose 순서
     // 1. Provider 리스너 먼저 제거
     if (_providerListener != null) {
       try {
@@ -98,9 +88,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     }
 
-    // 2. 컨트롤러 리스너 제거
-    _nicknameController.removeListener(_onUserEdit);
-    _statusController.removeListener(_onUserEdit);
+    // 2. FocusNode dispose
+    _nicknameFocusNode.dispose();
+    _statusFocusNode.dispose();
 
     // 3. 컨트롤러 dispose
     _nicknameController.dispose();
@@ -276,6 +266,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // 닉네임 (편집 가능)
             TextField(
               controller: _nicknameController,
+              focusNode: _nicknameFocusNode,
               enabled: !_isLoading,
               maxLength: 20,
               decoration: InputDecoration(
@@ -302,6 +293,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // 상태 메시지 (편집 가능)
             TextField(
               controller: _statusController,
+              focusNode: _statusFocusNode,
               enabled: !_isLoading,
               maxLength: 50,
               decoration: InputDecoration(
