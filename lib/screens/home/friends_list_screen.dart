@@ -352,16 +352,47 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
           print('[FriendsListScreen] provider.users: ${provider.users.map((u) => u.displayName).toList()}');
 
           // currentUser가 null이면 users에서 찾기
-          final myProfile = provider.currentUser ??
-              provider.users.firstWhere(
+          UserModel? myProfile = provider.currentUser;
+          if (myProfile == null && currentUserId != null) {
+            try {
+              myProfile = provider.users.firstWhere(
                 (user) => user.uid == currentUserId,
-                orElse: () => provider.users.first,
               );
+            } catch (e) {
+              print('[FriendsListScreen] ❌ Could not find current user in users list');
+            }
+          }
 
           return Column(
             children: [
               // 본인 프로필 카드
-              _buildMyProfileCard(myProfile),
+              if (myProfile != null)
+                _buildMyProfileCard(myProfile)
+              else
+                Container(
+                  margin: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.orange[100],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.orange, width: 1),
+                  ),
+                  child: Row(
+                    children: [
+                      const CircularProgressIndicator(),
+                      const SizedBox(width: 16),
+                      const Expanded(
+                        child: Text(
+                          '프로필 정보를 불러오는 중입니다...',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
               // 친구 목록 헤더
               Container(
