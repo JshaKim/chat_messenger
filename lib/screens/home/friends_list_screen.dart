@@ -346,27 +346,22 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
           }).toList();
 
           // 디버깅: currentUser 상태 확인
-          print('[FriendsListScreen] currentUser: ${provider.currentUser?.displayName ?? "NULL"}');
-          print('[FriendsListScreen] filteredUsers count: ${filteredUsers.length}');
+          print('[FriendsListScreen] currentUserId: $currentUserId');
+          print('[FriendsListScreen] provider.users.length: ${provider.users.length}');
+          print('[FriendsListScreen] currentUser: ${provider.currentUser?.displayName ?? "null"}');
+          print('[FriendsListScreen] provider.users: ${provider.users.map((u) => u.displayName).toList()}');
+
+          // currentUser가 null이면 users에서 찾기
+          final myProfile = provider.currentUser ??
+              provider.users.firstWhere(
+                (user) => user.uid == currentUserId,
+                orElse: () => provider.users.first,
+              );
 
           return Column(
             children: [
               // 본인 프로필 카드
-              if (provider.currentUser != null)
-                _buildMyProfileCard(provider.currentUser!)
-              else
-                Container(
-                  margin: const EdgeInsets.all(16),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.red[100],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Text(
-                    '⚠️ 프로필 정보를 불러오는 중...',
-                    style: TextStyle(color: Colors.red),
-                  ),
-                ),
+              _buildMyProfileCard(myProfile),
 
               // 친구 목록 헤더
               Container(
