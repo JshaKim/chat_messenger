@@ -20,24 +20,92 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late TextEditingController _statusController;
   bool _isLoading = false;
 
+  // 핵심 1: Provider 리스너를 별도로 관리
+  VoidCallback? _providerListener;
+
+  // 핵심 2: 사용자 입력 중인지 추적
+  bool _isUserEditing = false;
+
   @override
   void initState() {
     super.initState();
+    _nicknameController = TextEditingController();
+    _statusController = TextEditingController();
 
-    // Controller 생성 및 초기값 설정
-    final currentUser = context.read<UserProvider>().currentUser;
-    _nicknameController = TextEditingController(
-      text: currentUser?.displayName ?? '',
-    );
-    _statusController = TextEditingController(
-      text: currentUser?.statusMessage ?? '',
-    );
+    // 핵심 3: 컨트롤러에 직접 리스너 등록
+    _nicknameController.addListener(_onUserEdit);
+    _statusController.addListener(_onUserEdit);
+
+    // 핵심 4: 첫 프레임 후 Provider 연결
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setupProviderListener();
+    });
+  }
+
+  void _onUserEdit() {
+    // 사용자가 입력 중임을 표시
+    _isUserEditing = true;
+    // 3초 후 플래그 리셋 (디바운싱)
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          _isUserEditing = false;
+        });
+      }
+    });
+  }
+
+  void _setupProviderListener() {
+    if (!mounted) return;
+
+    final userProvider = context.read<UserProvider>();
+    final currentUser = userProvider.currentUser;
+
+    // 초기값 설정
+    if (currentUser != null) {
+      _nicknameController.text = currentUser.displayName;
+      _statusController.text = currentUser.statusMessage ?? '';
+    }
+
+    // Provider 리스너 설정
+    _providerListener = () {
+      if (!mounted || _isUserEditing) return;
+
+      final user = userProvider.currentUser;
+      if (user != null) {
+        // 값이 실제로 변경된 경우만 업데이트
+        if (_nicknameController.text != user.displayName) {
+          _nicknameController.text = user.displayName;
+        }
+        if (_statusController.text != (user.statusMessage ?? '')) {
+          _statusController.text = user.statusMessage ?? '';
+        }
+      }
+    };
+
+    userProvider.addListener(_providerListener!);
   }
 
   @override
   void dispose() {
+    // 핵심 5: 올바른 dispose 순서
+    // 1. Provider 리스너 먼저 제거
+    if (_providerListener != null) {
+      try {
+        context.read<UserProvider>().removeListener(_providerListener!);
+      } catch (e) {
+        // Context가 이미 dispose된 경우 무시
+      }
+    }
+
+    // 2. 컨트롤러 리스너 제거
+    _nicknameController.removeListener(_onUserEdit);
+    _statusController.removeListener(_onUserEdit);
+
+    // 3. 컨트롤러 dispose
     _nicknameController.dispose();
     _statusController.dispose();
+
     super.dispose();
   }
 
@@ -71,7 +139,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return;
       }
 
-      // Firestore만 업데이트 (Provider 업데이트 안 함)
+      // Firestore 직접 업데이트 (Provider는 Stream으로 자동 업데이트됨)
       await FirebaseFirestore.instance.collection('users').doc(uid).update({
         'displayName': nickname,
         'statusMessage': status.isEmpty ? null : status,
@@ -143,8 +211,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 핵심 6: build에서는 watch 사용 안 함 (read만 사용)
     final currentUser = context.read<UserProvider>().currentUser;
-    final authUser = context.watch<AuthProvider>().currentUser;
+    final authUser = context.read<AuthProvider>().currentUser;
 
     if (currentUser == null || authUser == null) {
       return const Scaffold(
