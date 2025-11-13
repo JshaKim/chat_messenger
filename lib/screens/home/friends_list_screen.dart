@@ -351,12 +351,6 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
               if (provider.currentUser != null)
                 _buildMyProfileCard(provider.currentUser!),
 
-              // 친구 목록 구분선
-              Container(
-                height: 8,
-                color: Colors.grey[100],
-              ),
-
               // 친구 목록
               Expanded(
                 child: filteredUsers.isEmpty
@@ -396,84 +390,99 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
   }
 
   Widget _buildMyProfileCard(UserModel currentUser) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          bottom: BorderSide(
-            color: Colors.grey[200]!,
-            width: 1,
-          ),
-        ),
+    final authUser = context.read<AuthProvider>().currentUser;
+    final displayEmail = currentUser.email != 'no-email@example.com'
+        ? currentUser.email
+        : (authUser?.email ?? currentUser.email);
+
+    return Card(
+      margin: const EdgeInsets.all(16),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
-        children: [
-          // 프로필 사진
-          UserAvatar(
-            photoURL: currentUser.photoURL,
-            isOnline: currentUser.isOnline,
-            radius: 32,
-          ),
-          const SizedBox(width: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            // 프로필 사진
+            UserAvatar(
+              photoURL: currentUser.photoURL,
+              isOnline: currentUser.isOnline,
+              radius: 32,
+            ),
+            const SizedBox(width: 16),
 
-          // 닉네임 및 상태 메시지
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 닉네임
-                Text(
-                  currentUser.displayName,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 4),
-
-                // 상태 메시지
-                if (currentUser.statusMessage != null &&
-                    currentUser.statusMessage!.isNotEmpty)
+            // 닉네임, 상태 메시지, 이메일
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 닉네임
                   Text(
-                    currentUser.statusMessage!,
+                    currentUser.displayName,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+
+                  // 상태 메시지
+                  if (currentUser.statusMessage != null &&
+                      currentUser.statusMessage!.isNotEmpty)
+                    Text(
+                      currentUser.statusMessage!,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    )
+                  else
+                    Text(
+                      '상태 메시지를 입력해주세요',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[400],
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  const SizedBox(height: 4),
+
+                  // 이메일
+                  Text(
+                    displayEmail,
                     style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
+                      fontSize: 12,
+                      color: Colors.grey[500],
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                  )
-                else
-                  Text(
-                    '상태 메시지를 입력해주세요',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[400],
-                      fontStyle: FontStyle.italic,
-                    ),
                   ),
-              ],
+                ],
+              ),
             ),
-          ),
 
-          // 프로필 편집 버튼
-          IconButton(
-            icon: const Icon(Icons.edit, color: Colors.grey),
-            onPressed: () {
-              // 프로필 탭으로 이동 (HomeScreen의 state를 찾아서 인덱스 변경)
-              final homeState = context.findAncestorStateOfType<State<StatefulWidget>>();
-              if (homeState != null && homeState.mounted) {
-                // HomeScreen의 setState를 통해 탭 인덱스를 2 (프로필)로 변경
-                (homeState as dynamic).setState(() {
-                  (homeState as dynamic)._currentIndex = 2;
-                });
-              }
-            },
-            tooltip: '프로필 편집',
-          ),
-        ],
+            // 프로필 편집 버튼
+            IconButton(
+              icon: const Icon(Icons.edit, color: Colors.grey),
+              onPressed: () {
+                // 프로필 탭으로 이동 (HomeScreen의 state를 찾아서 인덱스 변경)
+                final homeState = context.findAncestorStateOfType<State<StatefulWidget>>();
+                if (homeState != null && homeState.mounted) {
+                  // HomeScreen의 setState를 통해 탭 인덱스를 2 (프로필)로 변경
+                  (homeState as dynamic).setState(() {
+                    (homeState as dynamic)._currentIndex = 2;
+                  });
+                }
+              },
+              tooltip: '프로필 편집',
+            ),
+          ],
+        ),
       ),
     );
   }
