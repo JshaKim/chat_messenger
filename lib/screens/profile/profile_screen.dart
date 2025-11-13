@@ -18,26 +18,90 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   late TextEditingController _nicknameController;
   late TextEditingController _statusController;
+  late FocusNode _nicknameFocusNode;
+  late FocusNode _statusFocusNode;
   bool _isLoading = false;
+
+  // 핵심 1: Provider 리스너를 별도로 관리
+  VoidCallback? _providerListener;
 
   @override
   void initState() {
     super.initState();
+    _nicknameController = TextEditingController();
+    _statusController = TextEditingController();
+    _nicknameFocusNode = FocusNode();
+    _statusFocusNode = FocusNode();
 
-    // Controller 생성 및 초기값 설정
-    final currentUser = context.read<UserProvider>().currentUser;
-    _nicknameController = TextEditingController(
-      text: currentUser?.displayName ?? '',
-    );
-    _statusController = TextEditingController(
-      text: currentUser?.statusMessage ?? '',
-    );
+    // 첫 프레임 후 Provider 연결
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setupProviderListener();
+    });
+  }
+
+  void _setupProviderListener() {
+    if (!mounted) return;
+
+    final userProvider = context.read<UserProvider>();
+    final currentUser = userProvider.currentUser;
+
+    // 초기값 설정
+    if (currentUser != null) {
+      _nicknameController.text = currentUser.displayName;
+      _statusController.text = currentUser.statusMessage ?? '';
+    }
+
+    // Provider 리스너 설정 - FocusNode로 TextField focus 상태 확인
+    _providerListener = () {
+      // mounted 체크
+      if (!mounted) return;
+
+      // 어느 TextField라도 focus를 가지고 있으면 업데이트하지 않음
+      if (_nicknameFocusNode.hasFocus || _statusFocusNode.hasFocus) {
+        return;
+      }
+
+      final user = userProvider.currentUser;
+      if (user != null) {
+        // 다음 프레임에서 안전하게 업데이트 (현재 빌드 사이클 후)
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          if (_nicknameFocusNode.hasFocus || _statusFocusNode.hasFocus) return;
+
+          // 값이 실제로 변경된 경우만 업데이트
+          if (_nicknameController.text != user.displayName) {
+            _nicknameController.text = user.displayName;
+          }
+          if (_statusController.text != (user.statusMessage ?? '')) {
+            _statusController.text = user.statusMessage ?? '';
+          }
+        });
+      }
+    };
+
+    userProvider.addListener(_providerListener!);
   }
 
   @override
   void dispose() {
+    // 올바른 dispose 순서
+    // 1. Provider 리스너 먼저 제거
+    if (_providerListener != null) {
+      try {
+        context.read<UserProvider>().removeListener(_providerListener!);
+      } catch (e) {
+        // Context가 이미 dispose된 경우 무시
+      }
+    }
+
+    // 2. FocusNode dispose
+    _nicknameFocusNode.dispose();
+    _statusFocusNode.dispose();
+
+    // 3. 컨트롤러 dispose
     _nicknameController.dispose();
     _statusController.dispose();
+
     super.dispose();
   }
 
@@ -71,7 +135,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return;
       }
 
-      // Firestore만 업데이트 (Provider 업데이트 안 함)
+      // Firestore 직접 업데이트 (Provider는 Stream으로 자동 업데이트됨)
       await FirebaseFirestore.instance.collection('users').doc(uid).update({
         'displayName': nickname,
         'statusMessage': status.isEmpty ? null : status,
@@ -143,8 +207,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 핵심 6: build에서는 watch 사용 안 함 (read만 사용)
     final currentUser = context.read<UserProvider>().currentUser;
-    final authUser = context.watch<AuthProvider>().currentUser;
+    final authUser = context.read<AuthProvider>().currentUser;
 
     if (currentUser == null || authUser == null) {
       return const Scaffold(
@@ -207,6 +272,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // 닉네임 (편집 가능)
             TextField(
               controller: _nicknameController,
+              focusNode: _nicknameFocusNode,
               enabled: !_isLoading,
               maxLength: 20,
               decoration: InputDecoration(
@@ -233,6 +299,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // 상태 메시지 (편집 가능)
             TextField(
               controller: _statusController,
+              focusNode: _statusFocusNode,
               enabled: !_isLoading,
               maxLength: 50,
               decoration: InputDecoration(
