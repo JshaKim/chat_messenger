@@ -21,6 +21,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late FocusNode _nicknameFocusNode;
   late FocusNode _statusFocusNode;
   bool _isLoading = false;
+  UserProvider? _userProvider; // Provider 인스턴스 저장
 
   @override
   void initState() {
@@ -34,21 +35,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
 
-      final currentUser = context.read<UserProvider>().currentUser;
+      // Provider 인스턴스 저장 (dispose에서 사용)
+      _userProvider = context.read<UserProvider>();
+
+      final currentUser = _userProvider!.currentUser;
       if (currentUser != null) {
         _nicknameController.text = currentUser.displayName;
         _statusController.text = currentUser.statusMessage ?? '';
       }
 
       // Provider 리스너 등록 (사용자 데이터 변경 시 controller 업데이트)
-      context.read<UserProvider>().addListener(_updateControllersFromProvider);
+      _userProvider!.addListener(_updateControllersFromProvider);
     });
   }
 
   @override
   void dispose() {
-    // 리스너 먼저 제거
-    context.read<UserProvider>().removeListener(_updateControllersFromProvider);
+    // 리스너 먼저 제거 (저장된 인스턴스 사용, context 사용 안 함!)
+    _userProvider?.removeListener(_updateControllersFromProvider);
 
     // 그 다음 controller와 FocusNode dispose
     _nicknameController.dispose();
@@ -62,7 +66,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _updateControllersFromProvider() {
     if (!mounted) return;
 
-    final currentUser = context.read<UserProvider>().currentUser;
+    final currentUser = _userProvider?.currentUser;
     if (currentUser == null) return;
 
     // 닉네임 필드가 포커스 중이 아닐 때만 업데이트
