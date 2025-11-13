@@ -346,25 +346,51 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
           }).toList();
 
           // 디버깅: currentUser 상태 확인
-          print('[FriendsListScreen] currentUser: ${provider.currentUser?.displayName ?? "NULL"}');
-          print('[FriendsListScreen] filteredUsers count: ${filteredUsers.length}');
+          print('[FriendsListScreen] currentUserId: $currentUserId');
+          print('[FriendsListScreen] provider.users.length: ${provider.users.length}');
+          print('[FriendsListScreen] currentUser: ${provider.currentUser?.displayName ?? "null"}');
+          print('[FriendsListScreen] provider.users: ${provider.users.map((u) => u.displayName).toList()}');
+
+          // currentUser가 null이면 users에서 찾기
+          UserModel? myProfile = provider.currentUser;
+          if (myProfile == null && currentUserId != null) {
+            try {
+              myProfile = provider.users.firstWhere(
+                (user) => user.uid == currentUserId,
+              );
+            } catch (e) {
+              print('[FriendsListScreen] ❌ Could not find current user in users list');
+            }
+          }
 
           return Column(
             children: [
               // 본인 프로필 카드
-              if (provider.currentUser != null)
-                _buildMyProfileCard(provider.currentUser!)
+              if (myProfile != null)
+                _buildMyProfileCard(myProfile)
               else
                 Container(
                   margin: const EdgeInsets.all(16),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.red[100],
+                    color: Colors.orange[100],
                     borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.orange, width: 1),
                   ),
-                  child: const Text(
-                    '⚠️ 프로필 정보를 불러오는 중...',
-                    style: TextStyle(color: Colors.red),
+                  child: Row(
+                    children: [
+                      const CircularProgressIndicator(),
+                      const SizedBox(width: 16),
+                      const Expanded(
+                        child: Text(
+                          '프로필 정보를 불러오는 중입니다...',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
 
