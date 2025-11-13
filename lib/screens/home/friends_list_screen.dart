@@ -345,11 +345,28 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
             return true;
           }).toList();
 
+          // 디버깅: currentUser 상태 확인
+          print('[FriendsListScreen] currentUser: ${provider.currentUser?.displayName ?? "NULL"}');
+          print('[FriendsListScreen] filteredUsers count: ${filteredUsers.length}');
+
           return Column(
             children: [
               // 본인 프로필 카드
               if (provider.currentUser != null)
-                _buildMyProfileCard(provider.currentUser!),
+                _buildMyProfileCard(provider.currentUser!)
+              else
+                Container(
+                  margin: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.red[100],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Text(
+                    '⚠️ 프로필 정보를 불러오는 중...',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ),
 
               // 친구 목록 헤더
               Container(
