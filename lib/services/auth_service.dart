@@ -47,14 +47,20 @@ class AuthService {
           });
           print('[AuthService] Firestore 사용자 문서 생성 성공');
 
-          // 3단계: Firebase Auth 프로필 업데이트 (실패해도 계속 진행)
+          // 3단계: Firebase Auth 프로필 업데이트 (선택사항 - 실패해도 무시)
+          // displayName은 이미 Firestore에 저장되었으므로 이 단계는 선택적
           try {
             await userCredential.user!.updateDisplayName(displayName);
-            print('[AuthService] Firebase Auth 프로필 업데이트 성공');
+            print('[AuthService] ✅ Firebase Auth 프로필 업데이트 성공');
           } catch (updateError) {
-            print('[AuthService] ⚠️ Firebase Auth 프로필 업데이트 실패 (무시): $updateError');
-            // Firestore에는 이미 저장되었으므로 이 에러는 무시하고 계속 진행
+            print('[AuthService] ⚠️ Firebase Auth 프로필 업데이트 실패 (무시하고 계속): $updateError');
+            // 무시하고 계속 - Firestore에 이미 저장됨
           }
+
+          // 회원가입 성공 - userCredential 반환
+          print('[AuthService] ✅ 회원가입 완료: $uid');
+          return userCredential;
+
         } catch (firestoreError) {
           // Firestore 문서 생성 실패 시 Auth 계정 삭제 (롤백)
           print('[AuthService] ❌ Firestore 문서 생성 실패: $firestoreError');
@@ -77,6 +83,16 @@ class AuthService {
       print('[AuthService] ❌ Firebase Auth 오류: ${e.code} - ${e.message}');
       throw _handleAuthException(e);
     } catch (e) {
+      // updateDisplayName 에러는 이미 처리했으므로 여기 도달하면 다른 에러
+      final errorString = e.toString();
+      if (errorString.contains('PigeonUserDetails') || errorString.contains('updateDisplayName')) {
+        // updateDisplayName 관련 에러는 무시 (이미 Firestore에 저장됨)
+        print('[AuthService] ⚠️ updateDisplayName 에러 무시 (회원가입은 성공)');
+        if (userCredential != null) {
+          return userCredential;
+        }
+      }
+
       print('[AuthService] ❌ 알 수 없는 오류: $e');
       rethrow;
     }
