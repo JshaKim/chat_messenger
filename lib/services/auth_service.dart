@@ -47,9 +47,14 @@ class AuthService {
           });
           print('[AuthService] Firestore 사용자 문서 생성 성공');
 
-          // 3단계: Firebase Auth 프로필 업데이트
-          await userCredential.user!.updateDisplayName(displayName);
-          print('[AuthService] Firebase Auth 프로필 업데이트 성공');
+          // 3단계: Firebase Auth 프로필 업데이트 (실패해도 계속 진행)
+          try {
+            await userCredential.user!.updateDisplayName(displayName);
+            print('[AuthService] Firebase Auth 프로필 업데이트 성공');
+          } catch (updateError) {
+            print('[AuthService] ⚠️ Firebase Auth 프로필 업데이트 실패 (무시): $updateError');
+            // Firestore에는 이미 저장되었으므로 이 에러는 무시하고 계속 진행
+          }
         } catch (firestoreError) {
           // Firestore 문서 생성 실패 시 Auth 계정 삭제 (롤백)
           print('[AuthService] ❌ Firestore 문서 생성 실패: $firestoreError');
